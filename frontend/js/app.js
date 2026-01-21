@@ -129,16 +129,17 @@
             $('loading-overlay').classList.remove('hidden');
 
             try {
-                let imageBlob;
+                let data;
 
                 if (currentInputMode === 'draw') {
-                    imageBlob = await canvasEditor.getBlob();
+                    // Send canvas shape data as JSON
+                    const shapes = canvasEditor.getShapesData();
+                    data = await window.api.convertDesign(shapes);
                 } else {
-                    imageBlob = selectedFile;
+                    // Send image blob for OCR processing
+                    const imageBlob = selectedFile;
+                    data = await window.api.convertImage(imageBlob);
                 }
-
-                // Call API with timeout handling
-                const data = await window.api.convertImage(imageBlob);
 
                 // Render result
                 renderResult(data);
