@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeBuddy - Sketch to Code</title>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <div class="logo">CodeBuddy</div>
+            <div class="actions">
+                <button id="btn-convert">✨ Convert to Code</button>
+                <button id="btn-clear" class="secondary">Clear Canvas</button>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <!-- Left Pane: Input (Canvas & Upload) -->
+            <section class="pane input-pane">
+                <div class="pane-header">
+                    <h2>Input</h2>
+                    <div class="tabs">
+                        <button class="tab active" data-tab="draw">Draw</button>
+                        <button class="tab" data-tab="upload">Upload</button>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-draw">
+                    <div class="canvas-wrapper">
+                        <canvas id="drawing-canvas" width="800" height="600"></canvas>
+                        <div class="tools">
+                            <button data-tool="rect" class="tool-btn active" title="Rectangle">⬜</button>
+                            <button data-tool="text" class="tool-btn" title="Text Label">T</button>
+                        </div>
+                    </div>
+                    <p class="hint">Draw rectangles for buttons/inputs. Type text inside.</p>
+                </div>
+
+                <div class="tab-content hidden" id="tab-upload">
+                    <div class="upload-area" id="drop-zone">
+                        <input type="file" id="file-input" accept="image/*" hidden>
+                        <div class="upload-placeholder">
+                            <p>Drag & Drop UI Sketch here</p>
+                            <button id="btn-upload-trigger">Browse Files</button>
+                        </div>
+                        <img id="image-preview" class="hidden" alt="Preview">
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Pane: Output -->
+            <section class="pane output-pane">
+                <div class="pane-header">
+                    <h2>Output</h2>
+                    <div class="view-toggles">
+                        <button class="toggle active" data-view="render">Preview</button>
+                        <button class="toggle" data-view="code">Code</button>
+                    </div>
+                </div>
+
+                <div id="view-render" class="view-content">
+                    <iframe id="preview-frame"></iframe>
+                </div>
+
+                <div id="view-code" class="view-content hidden">
+                    <div class="code-block">
+                        <h3>HTML</h3>
+                        <pre><code id="code-html"></code></pre>
+                        <button class="copy-btn" data-target="code-html">Copy</button>
+                    </div>
+                    <div class="code-block">
+                        <h3>CSS</h3>
+                        <pre><code id="code-css"></code></pre>
+                        <button class="copy-btn" data-target="code-css">Copy</button>
+                    </div>
+                    <button id="btn-download" class="full-width margin-top">Download ZIP</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="hidden">
+            <div class="spinner"></div>
+            <p>Processing your sketch...</p>
+        </div>
+    </div>
+    <script src="js/api.js"></script>
+    <script src="js/canvas.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>
