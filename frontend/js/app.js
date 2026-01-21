@@ -134,6 +134,7 @@
                 if (currentInputMode === 'draw') {
                     // Send canvas shape data as JSON
                     const shapes = canvasEditor.getShapesData();
+                    console.log('Sending shapes:', shapes);
                     data = await window.api.convertDesign(shapes);
                 } else {
                     // Send image blob for OCR processing
@@ -223,35 +224,81 @@
         const fontSize = $('prop-font-size');
         const fontColor = $('prop-font-color');
 
+        // Line controls
+        const lineColor = $('prop-line-color');
+        const lineWidth = $('prop-line-width');
+        const lineStyle = $('prop-line-style');
+
+        // Property groups
+        const textProps = $('text-props');
+        const textColorProps = $('text-color-props');
+        const rectProps = $('rect-props');
+        const lineProps = $('line-props');
+
         // Value displays
         const borderWidthVal = $('border-width-val');
         const borderRadiusVal = $('border-radius-val');
         const fontSizeVal = $('font-size-val');
+        const lineWidthVal = $('line-width-val');
 
         // Update panel when selection changes
         canvasEditor.onSelectionChange = (shape) => {
-            if (shape && shape.type === 'rect') {
+            if (shape) {
                 noSelection.classList.add('hidden');
                 shapeProps.classList.remove('hidden');
 
-                // Load current values
-                fillColor.value = shape.fillColor === 'transparent' ? '#ffffff' : shape.fillColor;
-                borderColor.value = shape.borderColor || '#000000';
-                borderWidth.value = shape.borderWidth || 2;
-                borderRadius.value = shape.borderRadius || 0;
-                fontSize.value = shape.fontSize || 16;
-                fontColor.value = shape.fontColor || '#000000';
+                // Show/hide properties based on shape type
+                if (shape.type === 'rect' || shape.type === 'circle') {
+                    rectProps.classList.remove('hidden');
+                    lineProps.classList.add('hidden');
 
-                borderWidthVal.textContent = `${borderWidth.value}px`;
-                borderRadiusVal.textContent = `${borderRadius.value}px`;
-                fontSizeVal.textContent = `${fontSize.value}px`;
+                    // Show font controls only if rectangle has text
+                    if (shape.text && shape.text.trim()) {
+                        textProps.classList.remove('hidden');
+                        textColorProps.classList.remove('hidden');
+                    } else {
+                        textProps.classList.add('hidden');
+                        textColorProps.classList.add('hidden');
+                    }
+
+                    // Load current values
+                    fillColor.value = shape.fillColor === 'transparent' ? '#ffffff' : shape.fillColor;
+                    borderColor.value = shape.borderColor || '#000000';
+                    borderWidth.value = shape.borderWidth || 2;
+                    borderRadius.value = shape.borderRadius || 0;
+                    fontSize.value = shape.fontSize || 16;
+                    fontColor.value = shape.fontColor || '#000000';
+
+                    borderWidthVal.textContent = `${borderWidth.value}px`;
+                    borderRadiusVal.textContent = `${borderRadius.value}px`;
+                    fontSizeVal.textContent = `${fontSize.value}px`;
+                } else if (shape.type === 'line') {
+                    rectProps.classList.add('hidden');
+                    lineProps.classList.remove('hidden');
+                    textProps.classList.add('hidden');
+                    textColorProps.classList.add('hidden');
+
+                    lineColor.value = shape.borderColor || '#000000';
+                    lineWidth.value = shape.borderWidth || 2;
+                    lineStyle.value = shape.lineStyle || 'solid';
+                    lineWidthVal.textContent = `${lineWidth.value}px`;
+                } else if (shape.type === 'text') {
+                    rectProps.classList.add('hidden');
+                    lineProps.classList.add('hidden');
+                    textProps.classList.remove('hidden');
+                    textColorProps.classList.remove('hidden');
+
+                    fontSize.value = shape.fontSize || 16;
+                    fontColor.value = shape.fontColor || '#000000';
+                    fontSizeVal.textContent = `${fontSize.value}px`;
+                }
             } else {
                 noSelection.classList.remove('hidden');
                 shapeProps.classList.add('hidden');
             }
         };
 
-        // Apply changes
+        // Apply changes - Rectangle/Circle
         fillColor.addEventListener('input', (e) => {
             if (canvasEditor.selectedShape) {
                 canvasEditor.selectedShape.fillColor = e.target.value;
@@ -303,6 +350,35 @@
                 canvasEditor.redraw();
             }
         });
+
+        // Apply changes - Line
+        if (lineColor) {
+            lineColor.addEventListener('input', (e) => {
+                if (canvasEditor.selectedShape && canvasEditor.selectedShape.type === 'line') {
+                    canvasEditor.selectedShape.borderColor = e.target.value;
+                    canvasEditor.redraw();
+                }
+            });
+        }
+
+        if (lineWidth) {
+            lineWidth.addEventListener('input', (e) => {
+                if (canvasEditor.selectedShape && canvasEditor.selectedShape.type === 'line') {
+                    canvasEditor.selectedShape.borderWidth = parseInt(e.target.value);
+                    lineWidthVal.textContent = `${e.target.value}px`;
+                    canvasEditor.redraw();
+                }
+            });
+        }
+
+        if (lineStyle) {
+            lineStyle.addEventListener('change', (e) => {
+                if (canvasEditor.selectedShape && canvasEditor.selectedShape.type === 'line') {
+                    canvasEditor.selectedShape.lineStyle = e.target.value;
+                    canvasEditor.redraw();
+                }
+            });
+        }
     };
 
     // Init
