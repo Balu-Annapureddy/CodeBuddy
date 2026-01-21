@@ -7,26 +7,21 @@
     <title>CodeBuddy - Sketch to Code</title>
     <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
-        rel="stylesheet">
 </head>
 
 <body>
     <div id="app">
         <header>
-            <div class="logo">CodeBuddy</div>
-            <div class="actions">
-                <button id="btn-convert">✨ Convert to Code</button>
+            <div class="logo">✨ CodeBuddy</div>
+            <div>
+                <button id="btn-convert">🪄 Convert to Code</button>
                 <button id="btn-clear" class="secondary">Clear Canvas</button>
             </div>
         </header>
 
-        <main class="workspace">
-            <!-- Left Pane: Input (Canvas & Upload) -->
-            <section class="pane input-pane">
+        <div class="workspace">
+            <!-- Input Pane -->
+            <div class="pane">
                 <div class="pane-header">
                     <h2>Input</h2>
                     <div class="tabs">
@@ -36,64 +31,106 @@
                 </div>
 
                 <div class="tab-content" id="tab-draw">
-                    <div class="canvas-wrapper">
-                        <canvas id="drawing-canvas" width="800" height="600"></canvas>
-                        <div class="tools">
-                            <button data-tool="rect" class="tool-btn active" title="Rectangle">⬜</button>
-                            <button data-tool="text" class="tool-btn" title="Text Label">T</button>
+                    <div style="display: flex; gap: 10px; height: 100%;">
+                        <div style="flex: 1; display: flex; flex-direction: column;">
+                            <div class="canvas-wrapper" style="flex: 1;">
+                                <canvas id="drawing-canvas" width="800" height="600"></canvas>
+                                <div class="tools">
+                                    <button data-tool="select" class="tool-btn" title="Select">↖</button>
+                                    <button data-tool="rect" class="tool-btn active" title="Rectangle">⬜</button>
+                                    <button data-tool="text" class="tool-btn" title="Text Label">T</button>
+                                </div>
+                            </div>
+                            <p class="hint">Select (↖) to style. Draw rectangles (⬜). Add text (T).</p>
+                        </div>
+
+                        <!-- Properties Panel -->
+                        <div id="properties-panel" class="properties-panel">
+                            <h3>Properties</h3>
+                            <div id="no-selection" class="prop-section">
+                                <p style="color: var(--secondary-color); font-size: 0.85rem;">Select a shape to edit
+                                    properties</p>
+                            </div>
+                            <div id="shape-properties" class="prop-section hidden">
+                                <div class="prop-group">
+                                    <label>Fill Color</label>
+                                    <input type="color" id="prop-fill" value="#ffffff">
+                                    <button id="prop-fill-none" class="prop-btn-small">None</button>
+                                </div>
+                                <div class="prop-group">
+                                    <label>Border Color</label>
+                                    <input type="color" id="prop-border-color" value="#000000">
+                                </div>
+                                <div class="prop-group">
+                                    <label>Border Width</label>
+                                    <input type="range" id="prop-border-width" min="0" max="10" value="2">
+                                    <span id="border-width-val">2px</span>
+                                </div>
+                                <div class="prop-group">
+                                    <label>Border Radius</label>
+                                    <input type="range" id="prop-border-radius" min="0" max="50" value="0">
+                                    <span id="border-radius-val">0px</span>
+                                </div>
+                                <div class="prop-group" id="text-props">
+                                    <label>Font Size</label>
+                                    <input type="range" id="prop-font-size" min="8" max="48" value="16">
+                                    <span id="font-size-val">16px</span>
+                                </div>
+                                <div class="prop-group" id="text-color-props">
+                                    <label>Font Color</label>
+                                    <input type="color" id="prop-font-color" value="#000000">
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <p class="hint">Draw rectangles for buttons/inputs. Type text inside.</p>
                 </div>
 
                 <div class="tab-content hidden" id="tab-upload">
                     <div class="upload-area" id="drop-zone">
-                        <input type="file" id="file-input" accept="image/*" hidden>
                         <div class="upload-placeholder">
-                            <p>Drag & Drop UI Sketch here</p>
-                            <button id="btn-upload-trigger">Browse Files</button>
+                            <p>📁 Drag & drop a UI sketch here</p>
+                            <p>or</p>
+                            <button id="btn-browse">Browse Files</button>
+                            <input type="file" id="file-input" accept="image/*" style="display: none;">
                         </div>
                         <img id="image-preview" class="hidden" alt="Preview">
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- Right Pane: Output -->
-            <section class="pane output-pane">
+            <!-- Output Pane -->
+            <div class="pane">
                 <div class="pane-header">
                     <h2>Output</h2>
                     <div class="view-toggles">
-                        <button class="toggle active" data-view="render">Preview</button>
+                        <button class="toggle active" data-view="preview">Preview</button>
                         <button class="toggle" data-view="code">Code</button>
                     </div>
                 </div>
 
-                <div id="view-render" class="view-content">
+                <div class="view-content" id="view-preview">
                     <iframe id="preview-frame"></iframe>
                 </div>
 
-                <div id="view-code" class="view-content hidden">
+                <div class="view-content hidden" id="view-code">
                     <div class="code-block">
                         <h3>HTML</h3>
-                        <pre><code id="code-html"></code></pre>
-                        <button class="copy-btn" data-target="code-html">Copy</button>
+                        <pre><code id="html-output">// Generated HTML will appear here</code></pre>
                     </div>
                     <div class="code-block">
                         <h3>CSS</h3>
-                        <pre><code id="code-css"></code></pre>
-                        <button class="copy-btn" data-target="code-css">Copy</button>
+                        <pre><code id="css-output">// Generated CSS will appear here</code></pre>
                     </div>
-                    <button id="btn-download" class="full-width margin-top">Download ZIP</button>
                 </div>
-            </section>
-        </main>
-
-        <!-- Loading Overlay -->
-        <div id="loading-overlay" class="hidden">
-            <div class="spinner"></div>
-            <p>Processing your sketch...</p>
+            </div>
         </div>
     </div>
+
+    <div id="loading-overlay" class="hidden">
+        <div class="spinner"></div>
+        <p>Converting sketch to code...</p>
+    </div>
+
     <script src="js/api.js"></script>
     <script src="js/canvas.js"></script>
     <script src="js/app.js"></script>

@@ -1,107 +1,112 @@
+(() => {
+    const $ = (id) => document.getElementById(id);
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Helper to get element by ID
-    const $ = id => document.getElementById(id);
-
-    // Components
-    const canvasEditor = new CanvasEditor('drawing-canvas');
-
-    // State
-    let currentInputMode = 'draw'; // draw | upload
+    let canvasEditor;
     let selectedFile = null;
+    let currentInputMode = 'draw'; // draw | upload
 
     // --- Tab Switching ---
     const setupTabs = () => {
-        const tabs = document.querySelectorAll('.tab');
-        tabs.forEach(tab => {
+        document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                // Update UI state
-                tabs.forEach(t => t.classList.remove('active'));
+                const tabName = tab.dataset.tab;
+                currentInputMode = tabName;
+
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 tab.classList.add('active');
 
-                // Show content
-                const tabId = tab.dataset.tab;
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-                $(`tab-${tabId}`).classList.remove('hidden');
-
-                currentInputMode = tabId;
+                // Show corresponding content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                $(`tab-${tabName}`).classList.remove('hidden');
             });
         });
 
-        const viewToggles = document.querySelectorAll('.toggle');
-        viewToggles.forEach(toggle => {
+        // View toggles
+        document.querySelectorAll('.toggle').forEach(toggle => {
             toggle.addEventListener('click', () => {
-                viewToggles.forEach(t => t.classList.remove('active'));
+                const viewName = toggle.dataset.view;
+
+                document.querySelectorAll('.toggle').forEach(t => t.classList.remove('active'));
                 toggle.classList.add('active');
 
-                const viewId = toggle.dataset.view;
-                document.querySelectorAll('.view-content').forEach(c => c.classList.add('hidden'));
-                $(`view-${viewId}`).classList.remove('hidden');
+                document.querySelectorAll('.view-content').forEach(view => {
+                    view.classList.add('hidden');
+                });
+                $(`view-${viewName}`).classList.remove('hidden');
             });
         });
     };
 
-    // --- Tool Switching ---
+    // --- Canvas Tools ---
     const setupTools = () => {
-        const tools = document.querySelectorAll('.tool-btn');
-        tools.forEach(tool => {
-            tool.addEventListener('click', () => {
-                const toolName = tool.dataset.tool;
-                canvasEditor.setTool(toolName);
+        canvasEditor = new CanvasEditor('drawing-canvas');
 
-                tools.forEach(t => t.classList.remove('active'));
-                tool.classList.add('active');
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tool = btn.dataset.tool;
+                canvasEditor.setTool(tool);
+
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
             });
         });
 
         $('btn-clear').addEventListener('click', () => {
-            if (confirm('Clear canvas?')) {
-                canvasEditor.clear();
-            }
+            canvasEditor.clear();
         });
     };
 
     // --- File Upload ---
-    const setupUpload = () => {
+    const setupFileUpload = () => {
         const dropZone = $('drop-zone');
         const fileInput = $('file-input');
-        const btnBrowse = $('btn-upload-trigger');
-        const previewImg = $('image-preview');
+        const btnBrowse = $('btn-browse');
+        const preview = $('image-preview');
 
-        // Drag & Drop
+        btnBrowse.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    dropZone.querySelector('.upload-placeholder').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.style.borderColor = 'var(--primary-color)';
         });
 
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.style.borderColor = '#333';
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = 'var(--border-color)';
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = '#333';
-            handleFile(e.dataTransfer.files[0]);
+            dropZone.style.borderColor = 'var(--border-color)';
+
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                selectedFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    dropZone.querySelector('.upload-placeholder').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
         });
-
-        // Browse
-        btnBrowse.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
-
-        function handleFile(file) {
-            if (!file || !file.type.startsWith('image/')) return;
-            selectedFile = file;
-
-            // Preview
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                previewImg.src = e.target.result;
-                previewImg.classList.remove('hidden');
-                dropZone.querySelector('.upload-placeholder').classList.add('hidden');
-            };
-            reader.readAsDataURL(file);
-        }
     };
 
     // --- Main Logic: Convert ---
@@ -154,46 +159,32 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderResult = (data) => {
-        // Populate Code
-        const htmlCode = data.html;
-        const cssCode = data.css;
+        // Display HTML
+        $('html-output').textContent = data.html || '// No HTML generated';
 
-        $('code-html').textContent = htmlCode;
-        $('code-css').textContent = cssCode;
+        // Display CSS
+        $('css-output').textContent = data.css || '// No CSS generated';
 
-        // Populate Preview
-        const frame = $('preview-frame');
-        const doc = frame.contentDocument || frame.contentWindow.document;
-        doc.open();
-        doc.write(`
+        // Render preview
+        const previewFrame = $('preview-frame');
+        const previewDoc = previewFrame.contentDocument || previewFrame.contentWindow.document;
+
+        previewDoc.open();
+        previewDoc.write(`
             <!DOCTYPE html>
             <html>
             <head>
-                <style>${cssCode}</style>
+                <style>${data.css || ''}</style>
             </head>
             <body>
-                ${htmlCode}
+                ${data.html || ''}
             </body>
             </html>
         `);
-        doc.close();
+        previewDoc.close();
 
-        // Switch to preview tab automatically? Yes
-        document.querySelector('[data-view="render"]').click();
-    };
-
-    const setupClipboard = () => {
-        document.querySelectorAll('.copy-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const targetId = btn.dataset.target;
-                const text = $(targetId).textContent;
-                navigator.clipboard.writeText(text);
-
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                setTimeout(() => btn.textContent = originalText, 2000);
-            });
-        });
+        // Switch to preview tab automatically
+        document.querySelector('[data-view="preview"]').click();
     };
 
     // --- Notification System ---
@@ -217,10 +208,106 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 4000);
     };
 
+    // --- Properties Panel ---
+    const setupPropertiesPanel = () => {
+        const noSelection = $('no-selection');
+        const shapeProps = $('shape-properties');
+
+        // Property controls
+        const fillColor = $('prop-fill');
+        const fillNone = $('prop-fill-none');
+        const borderColor = $('prop-border-color');
+        const borderWidth = $('prop-border-width');
+        const borderRadius = $('prop-border-radius');
+        const fontSize = $('prop-font-size');
+        const fontColor = $('prop-font-color');
+
+        // Value displays
+        const borderWidthVal = $('border-width-val');
+        const borderRadiusVal = $('border-radius-val');
+        const fontSizeVal = $('font-size-val');
+
+        // Update panel when selection changes
+        canvasEditor.onSelectionChange = (shape) => {
+            if (shape && shape.type === 'rect') {
+                noSelection.classList.add('hidden');
+                shapeProps.classList.remove('hidden');
+
+                // Load current values
+                fillColor.value = shape.fillColor === 'transparent' ? '#ffffff' : shape.fillColor;
+                borderColor.value = shape.borderColor || '#000000';
+                borderWidth.value = shape.borderWidth || 2;
+                borderRadius.value = shape.borderRadius || 0;
+                fontSize.value = shape.fontSize || 16;
+                fontColor.value = shape.fontColor || '#000000';
+
+                borderWidthVal.textContent = `${borderWidth.value}px`;
+                borderRadiusVal.textContent = `${borderRadius.value}px`;
+                fontSizeVal.textContent = `${fontSize.value}px`;
+            } else {
+                noSelection.classList.remove('hidden');
+                shapeProps.classList.add('hidden');
+            }
+        };
+
+        // Apply changes
+        fillColor.addEventListener('input', (e) => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.fillColor = e.target.value;
+                canvasEditor.redraw();
+            }
+        });
+
+        fillNone.addEventListener('click', () => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.fillColor = 'transparent';
+                canvasEditor.redraw();
+            }
+        });
+
+        borderColor.addEventListener('input', (e) => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.borderColor = e.target.value;
+                canvasEditor.redraw();
+            }
+        });
+
+        borderWidth.addEventListener('input', (e) => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.borderWidth = parseInt(e.target.value);
+                borderWidthVal.textContent = `${e.target.value}px`;
+                canvasEditor.redraw();
+            }
+        });
+
+        borderRadius.addEventListener('input', (e) => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.borderRadius = parseInt(e.target.value);
+                borderRadiusVal.textContent = `${e.target.value}px`;
+                canvasEditor.redraw();
+            }
+        });
+
+        fontSize.addEventListener('input', (e) => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.fontSize = parseInt(e.target.value);
+                fontSizeVal.textContent = `${e.target.value}px`;
+                canvasEditor.redraw();
+            }
+        });
+
+        fontColor.addEventListener('input', (e) => {
+            if (canvasEditor.selectedShape) {
+                canvasEditor.selectedShape.fontColor = e.target.value;
+                canvasEditor.redraw();
+            }
+        });
+    };
+
     // Init
     setupTabs();
     setupTools();
-    setupUpload();
+    setupFileUpload();
     setupConvert();
-    setupClipboard();
-});
+    setupPropertiesPanel();
+})();
