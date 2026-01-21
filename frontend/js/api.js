@@ -19,7 +19,28 @@ class ApiService {
             return await response.json();
         } catch (error) {
             console.error('API Error:', error);
-            alert(`Error: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async convertDesign(shapes) {
+        try {
+            const response = await fetch(`${API_BASE}/design`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ shapes })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.detail || 'Conversion failed');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API Error:', error);
             throw error;
         }
     }

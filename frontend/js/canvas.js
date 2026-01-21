@@ -78,6 +78,24 @@ class CanvasEditor {
         return this.shapes.length > 0;
     }
 
+    getShapesData() {
+        // Export shapes with all properties for backend processing
+        return this.shapes.map(shape => ({
+            type: shape.type,
+            x: shape.x,
+            y: shape.y,
+            w: shape.w,
+            h: shape.h,
+            text: shape.text || '',
+            fillColor: shape.fillColor || 'transparent',
+            borderColor: shape.borderColor || '#000',
+            borderWidth: shape.borderWidth || 2,
+            borderRadius: shape.borderRadius || 0,
+            fontSize: shape.fontSize || 16,
+            fontColor: shape.fontColor || '#000'
+        }));
+    }
+
     // ============ UNDO/REDO ============
 
     saveState() {

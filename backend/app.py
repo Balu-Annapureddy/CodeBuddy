@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -11,6 +11,7 @@ from ocr.text_extractor import extract_text
 from codegen.layout_engine import build_layout_tree
 from codegen.html_gen import generate_html
 from codegen.css_gen import generate_css
+from codegen.html_gen_styled import generate_html_with_styles, generate_css_with_styles
 
 app = FastAPI()
 
@@ -23,8 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("CodeBuddyAPI")
+logger = logging.getLogger(__name__)
 
 @app.get("/")
 def read_root():
@@ -32,63 +34,120 @@ def read_root():
 
 @app.post("/api/upload")
 async def upload_image(file: UploadFile = File(...)):
+    """
+    Process uploaded image and convert to HTML/CSS
+    """
     try:
-        contents = await file.read()
-        logger.info(f"Received image: {len(contents)} bytes")
+        # Read image bytes
+        image_bytes = await file.read()
+        logger.info(f"Received image: {file.filename}, size: {len(image_bytes)} bytes")
         
-        # 1. Preprocess
-        processed_data = process_image(contents)
+        # Process image
+        processed = process_image(image_bytes)
         
-        # 2. Detect Components
-        # Pass the original image data through to help with classification if needed
-        components = detect_components(processed_data)
+        # Detect components
+        components = detect_components(processed['edges'])
         logger.info(f"Detected {len(components)} components")
         
-        # 3. OCR Extraction
-        # Run OCR on each detected component's bbox in the original image
-        original_image = processed_data['original']
+        # Extract text for each component
         for comp in components:
-            if comp.type in ['button', 'label', 'checkbox', 'input']:
-                # Extract text for these types
-                text = extract_text(original_image, comp.bbox)
-                
-                # Apply fallback text if OCR failed or returned empty
-                if text:
-                    comp.text = text
-                else:
-                    # Provide meaningful fallback based on component type
-                    fallback_map = {
-                        'button': 'Button',
-                        'input': 'Enter text',
-                        'label': 'Label',
-                        'checkbox': 'Option'
-                    }
-                    comp.text = fallback_map.get(comp.type, 'Text')
-                    logger.debug(f"Using fallback text for {comp.id}: '{comp.text}'")
-                
-                logger.info(f"OCR for {comp.id} ({comp.type}): '{comp.text}'")
-
-        # 4. Layout Analysis
+            comp.text = extract_text(processed['original'], comp.bbox)
+            if not comp.text:
+                if comp.type == 'button':
+                    comp.text = 'Button'
+                elif comp.type == 'input':
+                    comp.text = 'Enter text'
+                elif comp.type == 'label':
+                    comp.text = 'Label'
+                elif comp.type == 'checkbox':
+                    comp.text = 'Option'
+        
+        # Build layout tree
         layout_tree = build_layout_tree(components)
         
-        # 5. Code Generation
-        generated_html = generate_html(layout_tree)
-        generated_css = generate_css()
+        # Generate HTML and CSS
+        html = generate_html(layout_tree)
+        css = generate_css()
         
-        # Wrap HTML in a basic template for preview
-        full_html = f"""<div id="generated-content">
-{generated_html}
-</div>"""
-
-        return JSONResponse(content={
-            "html": full_html,
-            "css": generated_css,
-            "components": [c.to_dict() for c in components]
-        })
-
+        logger.info("Successfully generated HTML and CSS")
+        
+        return {
+            "html": html,
+            "css": css,
+            "components": [
+                {
+                    "id": comp.id,
+                    "type": comp.type,
+                    "bbox": comp.bbox,
+                    "text": comp.text
+                } for comp in components
+            ]
+        }
+    
     except Exception as e:
-        logger.error(f"Error processing upload: {str(e)}")
+        logger.error(f"Error processing image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/design")
+async def convert_design(request: Request):
+    """
+    Convert canvas design data (JSON) to HTML/CSS
+    Accepts shape data with styling properties
+    """
+    try:
+        data = await request.json()
+        shapes = data.get('shapes', [])
+        
+        if not shapes:
+            raise HTTPException(status_code=400, detail="No shapes provided")
+        
+        logger.info(f"Processing {len(shapes)} shapes from canvas")
+        
+        # Convert shapes to components with styling
+        components = []
+        for i, shape in enumerate(shapes):
+            comp_id = f"comp_{i:03d}"
+            comp = {
+                'id': comp_id,
+                'type': shape.get('type', 'unknown'),
+                'bbox': [
+                    int(shape.get('x', 0)),
+                    int(shape.get('y', 0)),
+                    int(shape.get('w', 100)),
+                    int(shape.get('h', 50))
+                ],
+                'text': shape.get('text', ''),
+                'styles': {
+                    'fillColor': shape.get('fillColor', 'transparent'),
+                    'borderColor': shape.get('borderColor', '#000'),
+                    'borderWidth': shape.get('borderWidth', 2),
+                    'borderRadius': shape.get('borderRadius', 0),
+                    'fontSize': shape.get('fontSize', 16),
+                    'fontColor': shape.get('fontColor', '#000')
+                }
+            }
+            components.append(comp)
+        
+        # Build layout tree
+        layout_tree = build_layout_tree(components)
+        
+        # Generate HTML with styles
+        html = generate_html_with_styles(layout_tree)
+        
+        # Generate CSS with custom styles
+        css = generate_css_with_styles(components)
+        
+        logger.info("Successfully generated styled HTML and CSS")
+        
+        return {
+            "html": html,
+            "css": css,
+            "components": components
+        }
+    
+    except Exception as e:
+        logger.error(f"Error processing design: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
